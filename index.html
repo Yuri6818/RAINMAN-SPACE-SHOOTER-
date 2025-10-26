@@ -1,0 +1,2077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rainman Space Shooter - Boss Edition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: radial-gradient(circle at center, #0d1421, #000000);
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            border: 2px solid rgba(0, 200, 255, 0.3);
+            box-shadow: 
+                0 0 15px rgba(0, 200, 255, 0.2),
+                inset 0 0 15px rgba(0, 200, 255, 0.05);
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: linear-gradient(180deg, #000000, #000510, #001020, #000510, #000000);
+        }
+
+        .start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            color: rgba(0, 200, 255, 0.9);
+            text-align: center;
+            padding: 20px;
+        }
+
+        .game-title {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(0, 200, 255, 0.5);
+            animation: pulse-title 2s infinite;
+        }
+
+        @keyframes pulse-title {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+        }
+
+        .start-button, .achievements-button {
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 10px;
+            text-transform: uppercase;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .start-button {
+            background: linear-gradient(45deg, rgba(0, 200, 255, 0.8), rgba(0, 150, 255, 0.8));
+            box-shadow: 0 0 15px rgba(0, 200, 255, 0.4);
+        }
+
+        .achievements-button {
+            background: linear-gradient(45deg, rgba(255, 200, 0, 0.8), rgba(255, 150, 0, 0.8));
+            box-shadow: 0 0 15px rgba(255, 200, 0, 0.4);
+        }
+
+        .start-button:hover, .achievements-button:hover {
+            transform: scale(1.1);
+        }
+
+        .power-up-guide {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .power-up-item {
+            display: flex;
+            align-items: center;
+            background: rgba(0, 150, 200, 0.1);
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(0, 150, 200, 0.3);
+            font-size: 13px;
+        }
+
+        .power-up-icon-preview {
+            width: 35px;
+            height: 35px;
+            margin-right: 8px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .achievements-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 10, 20, 0.95);
+            z-index: 110;
+            display: none;
+            flex-direction: column;
+            padding: 20px;
+            color: rgba(255, 200, 0, 0.9);
+            border: 2px solid rgba(255, 200, 0, 0.3);
+        }
+
+        .achievements-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255, 200, 0, 0.5);
+        }
+
+        #closeAchievementsButton {
+            background: none;
+            border: 2px solid rgba(255, 200, 0, 0.6);
+            color: rgba(255, 200, 0, 0.9);
+            font-size: 24px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .achievements-list {
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .achievement-item {
+            background: rgba(255, 200, 0, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 200, 0, 0.3);
+            opacity: 0.5;
+            transition: opacity 0.3s ease;
+        }
+
+        .achievement-item.unlocked {
+            opacity: 1;
+        }
+
+        .achievement-notification {
+            position: absolute;
+            top: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(45deg, rgba(255, 200, 0, 0.95), rgba(255, 150, 0, 0.95));
+            color: #111;
+            padding: 15px 25px;
+            border-radius: 10px;
+            z-index: 200;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(255, 200, 0, 0.6);
+            transition: top 0.5s ease-in-out;
+            font-weight: bold;
+        }
+
+        .achievement-notification.show {
+            top: 30px;
+        }
+
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .game-stats {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: rgba(0, 200, 255, 0.9);
+            font-size: 16px;
+            text-shadow: 0 0 5px rgba(0, 200, 255, 0.3);
+        }
+
+        .combo-counter {
+            position: absolute;
+            top: 90px;
+            left: 20px;
+            color: rgba(255, 150, 0, 0.9);
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 0 0 8px rgba(255, 150, 0, 0.5);
+        }
+
+        .health-bar {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 180px;
+            height: 18px;
+            border: 2px solid rgba(0, 200, 255, 0.6);
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, rgba(255, 0, 100, 0.8), rgba(255, 100, 0, 0.8), rgba(255, 200, 0, 0.8));
+            border-radius: 8px;
+            transition: width 0.3s ease;
+        }
+
+        .ammo-counter {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: rgba(255, 200, 0, 0.9);
+            font-size: 14px;
+            text-shadow: 0 0 8px rgba(255, 200, 0, 0.5);
+        }
+
+        .power-up-indicators {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .power-up-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 11px;
+            color: white;
+            text-shadow: 0 0 8px currentColor;
+            border: 2px solid currentColor;
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .power-up-icon.invincibility { color: rgba(0, 150, 255, 0.9); box-shadow: 0 0 15px rgba(0, 150, 255, 0.5); }
+        .power-up-icon.rapidFire { color: rgba(255, 100, 0, 0.9); box-shadow: 0 0 15px rgba(255, 100, 0, 0.5); }
+        .power-up-icon.doppelganger { color: rgba(150, 100, 255, 0.9); box-shadow: 0 0 15px rgba(150, 100, 255, 0.5); }
+        .power-up-icon.ammoBoost { color: rgba(255, 200, 0, 0.9); box-shadow: 0 0 15px rgba(255, 200, 0, 0.5); }
+        .power-up-icon.enhancedInvisibility { color: rgba(100, 255, 255, 0.9); box-shadow: 0 0 15px rgba(100, 255, 255, 0.5); }
+        .power-up-icon.emp { color: rgba(255, 200, 0, 0.9); box-shadow: 0 0 15px rgba(255, 200, 0, 0.5); }
+        .power-up-icon.timeFreeze { color: rgba(150, 200, 255, 0.9); box-shadow: 0 0 15px rgba(150, 200, 255, 0.5); }
+        .power-up-icon.magnet { color: rgba(255, 150, 255, 0.9); box-shadow: 0 0 15px rgba(255, 150, 255, 0.5); }
+        .power-up-icon.shieldBurst { color: rgba(100, 255, 150, 0.9); box-shadow: 0 0 15px rgba(100, 255, 150, 0.5); }
+
+        .game-over, .level-up {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: rgba(255, 0, 100, 0.9);
+            font-size: 32px;
+            text-shadow: 0 0 25px rgba(255, 0, 100, 0.5);
+            display: none;
+            z-index: 20;
+        }
+
+        .level-up {
+            color: rgba(0, 255, 100, 0.9);
+            text-shadow: 0 0 25px rgba(0, 255, 100, 0.5);
+        }
+        
+        .shop-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 10, 30, 0.95);
+            z-index: 110;
+            display: none;
+            flex-direction: column;
+            padding: 40px;
+            color: rgba(0, 200, 255, 0.9);
+            border: 2px solid rgba(0, 200, 255, 0.3);
+            overflow-y: auto;
+        }
+
+        .shop-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px rgba(0, 200, 255, 0.5);
+        }
+        
+        .shop-header h2 {
+            font-size: 2.5em;
+        }
+        
+        .shop-score {
+            font-size: 1.5em;
+            color: rgba(255, 200, 0, 0.9);
+        }
+
+        #closeShopButton {
+            background: linear-gradient(45deg, rgba(0, 200, 255, 0.8), rgba(0, 150, 255, 0.8));
+            border: none;
+            color: white;
+            font-size: 18px;
+            padding: 10px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+
+        .upgrades-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .customize-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 0, 20, 0.95);
+            z-index: 110;
+            display: none;
+            flex-direction: column;
+            padding: 40px;
+            color: rgba(255, 0, 200, 0.9);
+            border: 2px solid rgba(255, 0, 200, 0.3);
+            overflow-y: auto;
+        }
+        
+        .customize-section {
+            margin-bottom: 30px;
+        }
+        
+        .customize-section h3 {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px rgba(255, 0, 200, 0.5);
+        }
+        
+        .customize-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .customize-card {
+            background: rgba(255, 0, 200, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 0, 200, 0.3);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .customize-card.locked {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        
+        .customize-card.selected {
+            border-color: rgba(0, 255, 200, 0.8);
+            box-shadow: 0 0 20px rgba(0, 255, 200, 0.5);
+        }
+        
+        .customize-card.unlocked:hover {
+            transform: scale(1.05);
+            border-color: rgba(255, 100, 255, 0.6);
+        }
+        
+        .skin-preview {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 10px;
+            border-radius: 50%;
+        }
+        
+        .theme-preview {
+            width: 100%;
+            height: 60px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+        }
+        
+        .unlock-hint {
+            font-size: 0.75em;
+            color: rgba(255, 200, 255, 0.6);
+            margin-top: 5px;
+        }
+
+        .upgrade-card {
+            background: rgba(0, 150, 200, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid rgba(0, 150, 200, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .upgrade-card:hover {
+            border-color: rgba(0, 200, 255, 0.6);
+            box-shadow: 0 0 20px rgba(0, 200, 255, 0.3);
+        }
+
+        .upgrade-card h3 {
+            margin-bottom: 10px;
+            color: rgba(255, 200, 0, 0.9);
+            font-size: 1.3em;
+        }
+
+        .upgrade-description {
+            margin-bottom: 15px;
+            font-size: 0.9em;
+            color: rgba(200, 220, 255, 0.8);
+        }
+        
+        .upgrade-level {
+            display: inline-block;
+            margin-bottom: 10px;
+            padding: 5px 10px;
+            background: rgba(0, 200, 255, 0.2);
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+
+        .upgrade-button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(45deg, rgba(0, 200, 255, 0.8), rgba(0, 150, 255, 0.8));
+            border: none;
+            color: white;
+            font-size: 1.1em;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .upgrade-button:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0, 200, 255, 0.5);
+        }
+        
+        .upgrade-button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .mobile-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: none;
+            justify-content: space-between;
+            padding: 0 20px;
+            pointer-events: auto;
+            z-index: 15;
+        }
+
+        .control-stick, .fire-button {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: 2px solid rgba(0, 200, 255, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(0, 200, 255, 0.9);
+            font-weight: bold;
+            user-select: none;
+            font-size: 12px;
+            background: rgba(0, 100, 150, 0.2);
+        }
+
+        .fire-button {
+            background: rgba(255, 100, 0, 0.2);
+            border-color: rgba(255, 100, 0, 0.6);
+            color: rgba(255, 100, 0, 0.9);
+        }
+
+        .controls-info {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(0, 200, 255, 0.6);
+            font-size: 11px;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-controls { display: flex; }
+            .controls-info { display: none; }
+            .game-title { font-size: 2em; }
+            .power-up-guide { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="start-screen" id="startScreen">
+            <div class="game-title">🚀 RAINMAN SPACE SHOOTER 🚀</div>
+            
+            <button class="start-button" id="startButton">START GAME</button>
+            <button class="achievements-button" id="achievementsButton">🏆 ACHIEVEMENTS</button>
+            <button class="achievements-button" id="customizeButton" style="background: linear-gradient(45deg, rgba(255, 0, 200, 0.8), rgba(200, 0, 255, 0.8)); box-shadow: 0 0 15px rgba(255, 0, 200, 0.4);">🎨 CUSTOMIZE</button>
+
+            <div class="power-up-guide">
+                <div class="power-up-item">
+                    <div class="power-up-icon-preview" style="background: rgba(255, 200, 0, 0.8); color: black;">💥</div>
+                    <div><strong>EMP Blast</strong><br><small>Destroys all enemies (20% to boss)</small></div>
+                </div>
+                <div class="power-up-item">
+                    <div class="power-up-icon-preview" style="background: rgba(0, 150, 255, 0.8); color: white;">🛡️</div>
+                    <div><strong>Invincibility</strong><br><small>Destroy on contact</small></div>
+                </div>
+                <div class="power-up-item">
+                    <div class="power-up-icon-preview" style="background: rgba(255, 100, 0, 0.8); color: white;">⚡</div>
+                    <div><strong>Rapid Fire</strong><br><small>Triple shot</small></div>
+                </div>
+                <div class="power-up-item">
+                    <div class="power-up-icon-preview" style="background: rgba(150, 100, 255, 0.8); color: white;">👥</div>
+                    <div><strong>Doppelganger</strong><br><small>Mirror ship</small></div>
+                </div>
+                <div class="power-up-item">
+                    <div class="power-up-icon-preview" style="background: rgba(255, 200, 0, 0.8); color: black;">🎯</div>
+                    <div><strong>Ammo Boost</strong><br><small>Extra ammo</small></div>
+                </div>
+                <div class="power-up-item">
+                    <div class="power-up-icon-preview" style="background: rgba(100, 255, 255, 0.8); color: black;">👻</div>
+                    <div><strong>Invisibility</strong><br><small>Phase through</small></div>
+                </div>
+                <div class="power-up-item">
+                    <div class="power-up-icon-preview" style="background: rgba(150, 200, 255, 0.8); color: black;">⏰</div>
+                    <div><strong>Time Freeze</strong><br><small>Freeze enemies briefly</small></div>
+                </div>
+                <div class="power-up-item">
+                    <div class="power-up-icon-preview" style="background: rgba(255, 150, 255, 0.8); color: black;">🧲</div>
+                    <div><strong>Magnet</strong><br><small>Pull power-ups to you</small></div>
+                </div>
+                <div class="power-up-item">
+                    <div class="power-up-icon-preview" style="background: rgba(100, 255, 150, 0.8); color: black;">💚</div>
+                    <div><strong>Shield Burst</strong><br><small>Blast nearby enemies</small></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="customize-panel" id="customizePanel">
+            <div class="shop-header">
+                <h2>🎨 CUSTOMIZE</h2>
+                <button id="closeCustomizeButton" style="background: none; border: 2px solid rgba(255, 0, 200, 0.6); color: rgba(255, 0, 200, 0.9); font-size: 24px; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;">&times;</button>
+            </div>
+            
+            <div class="customize-section">
+                <h3>🚀 Ship Skins</h3>
+                <div class="customize-grid" id="skinsList"></div>
+            </div>
+            
+            <div class="customize-section">
+                <h3>🌌 Background Themes</h3>
+                <div class="customize-grid" id="themesList"></div>
+            </div>
+        </div>
+
+        <div class="achievements-panel" id="achievementsPanel">
+            <div class="achievements-header">
+                <h2>🏆 Achievements</h2>
+                <button id="closeAchievementsButton">&times;</button>
+            </div>
+            <div class="achievements-list" id="achievementsList"></div>
+        </div>
+        
+        <div class="shop-panel" id="shopPanel">
+            <div class="shop-header">
+                <div>
+                    <h2>⚙️ UPGRADE SHOP</h2>
+                    <div class="shop-score">Score: <span id="shopScore">0</span></div>
+                </div>
+                <button id="closeShopButton">CONTINUE</button>
+            </div>
+            
+            <div class="upgrades-grid">
+                <div class="upgrade-card">
+                    <h3>💥 Damage Boost</h3>
+                    <p class="upgrade-description">Increase bullet damage against all enemies</p>
+                    <div class="upgrade-level">Lv 0</div>
+                    <button class="upgrade-button" data-upgrade="damageBoost" data-cost="200">
+                        Buy for 200 points
+                    </button>
+                </div>
+                
+                <div class="upgrade-card">
+                    <h3>⚡ Speed Boost</h3>
+                    <p class="upgrade-description">Move faster to dodge enemy attacks</p>
+                    <div class="upgrade-level">Lv 0</div>
+                    <button class="upgrade-button" data-upgrade="speedBoost" data-cost="150">
+                        Buy for 150 points
+                    </button>
+                </div>
+                
+                <div class="upgrade-card">
+                    <h3>❤️ Health Boost</h3>
+                    <p class="upgrade-description">Increase maximum health and level-up heal</p>
+                    <div class="upgrade-level">Lv 0</div>
+                    <button class="upgrade-button" data-upgrade="healthBoost" data-cost="250">
+                        Buy for 250 points
+                    </button>
+                </div>
+                
+                <div class="upgrade-card">
+                    <h3>🔫 Fire Rate</h3>
+                    <p class="upgrade-description">Shoot faster with reduced cooldown</p>
+                    <div class="upgrade-level">Lv 0</div>
+                    <button class="upgrade-button" data-upgrade="fireRateBoost" data-cost="180">
+                        Buy for 180 points
+                    </button>
+                </div>
+                
+                <div class="upgrade-card">
+                    <h3>🧲 Magnet Range</h3>
+                    <p class="upgrade-description">Increase pull range for magnet power-up</p>
+                    <div class="upgrade-level">Lv 0</div>
+                    <button class="upgrade-button" data-upgrade="magnetRange" data-cost="200">
+                        Buy for 200 points
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="ui-overlay">
+            <div class="game-stats">
+                <div>Score: <span id="score">0</span></div>
+                <div>Level: <span id="level">1</span></div>
+                <div>XP: <span id="xp">0</span>/<span id="xpNext">100</span></div>
+            </div>
+
+            <div class="combo-counter" id="comboCounter">
+                COMBO: <span id="comboValue">0</span>x
+            </div>
+            
+            <div class="health-bar">
+                <div class="health-fill" id="healthFill" style="width: 100%;"></div>
+            </div>
+            
+            <div class="ammo-counter">
+                Ammo: <span id="ammo">∞</span>
+            </div>
+            
+            <div class="power-up-indicators" id="powerUpIndicators"></div>
+            
+            <div class="game-over" id="gameOver">
+                <div>GAME OVER</div>
+                <div style="font-size: 16px; margin-top: 10px;">Press SPACE to restart</div>
+            </div>
+            
+            <div class="level-up" id="levelUp">
+                <div>LEVEL UP!</div>
+                <div style="font-size: 16px; margin-top: 10px;">Health Restored!</div>
+            </div>
+
+            <div class="achievement-notification" id="achievementNotification">
+                <div class="achievement-notification-title"></div>
+                <div class="achievement-notification-description"></div>
+            </div>
+        </div>
+        
+        <div class="mobile-controls">
+            <div class="control-stick" id="moveStick">MOVE</div>
+            <div class="fire-button" id="fireButton">FIRE</div>
+        </div>
+        
+        <div class="controls-info">
+            ARROW KEYS or WASD to move • SPACEBAR to shoot • P to pause • Boss fights every 5 levels! • Shop every 3 levels!
+        </div>
+    </div>
+
+    <script>
+        // Complete Game Code
+        let canvas, ctx;
+        let gameStarted = false;
+        let gameRunning = false;
+        let paused = false;
+        
+        // Game State
+        let score = 0;
+        let level = 1;
+        let xp = 0;
+        let xpToNext = 100;
+        let health = 100;
+        let maxHealth = 100;
+        let ammo = Infinity;
+        let combo = 0;
+        let maxCombo = 0;
+        let boss = null;
+        let bossActive = false;
+        
+        // Game Objects
+        let player = null;
+        let doppelganger = null;
+        let bullets = [];
+        let enemies = [];
+        let powerUps = [];
+        let particles = [];
+        let activePowerUps = new Map();
+        
+        // Stats
+        let totalKills = 0;
+        let survivalTime = 0;
+        let powerUpsCollected = 0;
+        let gameStartTime = 0;
+        
+        // Input
+        let keys = {};
+        
+        // Timing
+        let lastEnemySpawn = 0;
+        let lastPowerUpSpawn = 0;
+        let lastShot = 0;
+        let lastComboTime = 0;
+        let timeFrozen = false;
+        let timeFreezeEnd = 0;
+        
+        // Upgrades
+        let upgrades = {
+            damageBoost: 0,
+            speedBoost: 0,
+            healthBoost: 0,
+            fireRateBoost: 0,
+            magnetRange: 0
+        };
+        let shopOpen = false;
+        
+        // Skins & Themes
+        let currentSkin = 'default';
+        let currentTheme = 'space';
+        let unlockedSkins = ['default'];
+        let unlockedThemes = ['space'];
+        
+        const skins = {
+            default: { name: 'Classic', color: 'rgba(0, 200, 255, 0.9)', glow: 'rgba(0, 150, 255, 0.8)' },
+            fire: { name: 'Fire Phoenix', color: 'rgba(255, 100, 0, 0.9)', glow: 'rgba(255, 150, 0, 0.8)', unlock: 'killStreak50' },
+            shadow: { name: 'Shadow', color: 'rgba(100, 0, 200, 0.9)', glow: 'rgba(150, 0, 255, 0.8)', unlock: 'survive30' },
+            gold: { name: 'Golden', color: 'rgba(255, 200, 0, 0.9)', glow: 'rgba(255, 220, 100, 0.8)', unlock: 'score1000' },
+            ice: { name: 'Ice Crystal', color: 'rgba(100, 200, 255, 0.9)', glow: 'rgba(150, 220, 255, 0.8)', unlock: 'level5' },
+            neon: { name: 'Neon Pink', color: 'rgba(255, 0, 200, 0.9)', glow: 'rgba(255, 100, 255, 0.8)', unlock: 'level10' }
+        };
+        
+        const themes = {
+            space: { name: 'Deep Space', bgGradient: 'linear-gradient(180deg, #000000, #000510, #001020, #000510, #000000)', starColor: 'rgba(200, 220, 255' },
+            nebula: { name: 'Nebula', bgGradient: 'linear-gradient(180deg, #1a0033, #330033, #4d0066, #330033, #1a0033)', starColor: 'rgba(255, 150, 255', unlock: 'combo5' },
+            sunset: { name: 'Sunset', bgGradient: 'linear-gradient(180deg, #0a0010, #1a0520, #2d1040, #1a0520, #0a0010)', starColor: 'rgba(255, 200, 150', unlock: 'powerUpCollector' },
+            matrix: { name: 'Matrix', bgGradient: 'linear-gradient(180deg, #000a00, #001a00, #003300, #001a00, #000a00)', starColor: 'rgba(100, 255, 100', unlock: 'killStreak10' }
+        };
+        
+        // Achievements
+        const achievements = [
+            { id: 'firstKill', name: 'First Blood', description: 'Destroy your first enemy', unlocked: false },
+            { id: 'killStreak10', name: 'Decimator', description: 'Kill 10 enemies', unlocked: false },
+            { id: 'killStreak50', name: 'Annihilator', description: 'Kill 50 enemies', unlocked: false },
+            { id: 'survive30', name: 'Survivor', description: 'Survive 30 seconds', unlocked: false },
+            { id: 'score1000', name: 'Rookie Pilot', description: 'Score 1,000 points', unlocked: false },
+            { id: 'level5', name: 'Rising Star', description: 'Reach level 5', unlocked: false },
+            { id: 'level10', name: 'Boss Slayer', description: 'Reach level 10', unlocked: false },
+            { id: 'combo5', name: 'Multi-Kill', description: 'Get a 5x combo', unlocked: false },
+            { id: 'powerUpCollector', name: 'Power Hunter', description: 'Collect 5 power-ups', unlocked: false }
+        ];
+
+        // Stars for background
+        const stars = [];
+        
+        // Player Class
+        class Player {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 30;
+                this.height = 30;
+                this.speed = 5 + upgrades.speedBoost;
+            }
+            
+            draw(ctx, invincible = false) {
+                const skinData = skins[currentSkin];
+                const color = skinData.color;
+                const glowColor = invincible ? skinData.glow : color;
+                
+                ctx.fillStyle = color;
+                ctx.shadowBlur = invincible ? 15 : 8;
+                ctx.shadowColor = glowColor;
+                
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y - 15);
+                ctx.lineTo(this.x - 8, this.y - 5);
+                ctx.lineTo(this.x - 15, this.y + 10);
+                ctx.lineTo(this.x - 8, this.y + 8);
+                ctx.lineTo(this.x - 4, this.y + 15);
+                ctx.lineTo(this.x + 4, this.y + 15);
+                ctx.lineTo(this.x + 8, this.y + 8);
+                ctx.lineTo(this.x + 15, this.y + 10);
+                ctx.lineTo(this.x + 8, this.y - 5);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.fillStyle = 'rgba(200, 220, 255, 0.8)';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y - 3, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = glowColor;
+                ctx.shadowBlur = 5;
+                ctx.fillRect(this.x - 3, this.y + 12, 2, 6);
+                ctx.fillRect(this.x + 1, this.y + 12, 2, 6);
+                
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        // Enemy Class
+        class Enemy {
+            constructor(x, y, type = 'basic') {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.active = true;
+                this.animFrame = 0;
+                
+                switch (type) {
+                    case 'basic':
+                        this.width = 25;
+                        this.height = 25;
+                        this.speed = 2 + (level * 0.1);
+                        this.health = 1;
+                        this.points = 10;
+                        this.color = 'rgba(200, 100, 0, 0.8)';
+                        break;
+                    case 'fast':
+                        this.width = 20;
+                        this.height = 20;
+                        this.speed = 4 + (level * 0.15);
+                        this.health = 1;
+                        this.points = 15;
+                        this.color = 'rgba(200, 0, 100, 0.8)';
+                        break;
+                    case 'heavy':
+                        this.width = 35;
+                        this.height = 35;
+                        this.speed = 1.5 + (level * 0.08);
+                        this.health = 3 + Math.floor(level / 3);
+                        this.maxHealth = 3 + Math.floor(level / 3);
+                        this.points = 30;
+                        this.color = 'rgba(0, 150, 100, 0.8)';
+                        break;
+                }
+            }
+            
+            update() {
+                if (timeFrozen) return;
+                this.y += this.speed;
+                this.animFrame++;
+            }
+            
+            draw(ctx) {
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 5;
+                ctx.shadowColor = this.color;
+                
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                
+                switch (this.type) {
+                    case 'basic':
+                        ctx.beginPath();
+                        ctx.ellipse(0, 0, 15, 5, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        ctx.beginPath();
+                        ctx.ellipse(0, -5, 10, 6, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+                        for (let i = 0; i < 3; i++) {
+                            const angle = (i * Math.PI * 2 / 3) + this.animFrame * 0.1;
+                            ctx.fillRect(Math.cos(angle) * 10 - 1, 2, 2, 2);
+                        }
+                        break;
+                        
+                    case 'fast':
+                        ctx.rotate(this.animFrame * 0.05);
+                        ctx.beginPath();
+                        ctx.moveTo(0, -10);
+                        ctx.lineTo(10, 0);
+                        ctx.lineTo(7, 10);
+                        ctx.lineTo(-7, 10);
+                        ctx.lineTo(-10, 0);
+                        ctx.closePath();
+                        ctx.fill();
+                        
+                        ctx.fillStyle = 'rgba(255, 50, 150, 0.7)';
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                        
+                    case 'heavy':
+                        ctx.fillRect(-17, -17, 34, 34);
+                        
+                        ctx.fillStyle = 'rgba(100, 255, 100, 0.3)';
+                        for (let i = 0; i < 3; i++) {
+                            ctx.fillRect(-12, -12 + i * 8, 24, 3);
+                        }
+                        
+                        ctx.fillStyle = 'rgba(255, 0, 0, 0.6)';
+                        ctx.fillRect(-8, -20, 3, 6);
+                        ctx.fillRect(5, -20, 3, 6);
+                        break;
+                }
+                
+                ctx.restore();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        // Boss Class
+        class Boss {
+            constructor(lvl) {
+                this.x = canvas.width / 2;
+                this.y = -100;
+                this.targetY = 150;
+                this.width = 80;
+                this.height = 80;
+                this.speed = 1 + (lvl * 0.1);
+                this.health = 50 + (lvl * 20);
+                this.maxHealth = this.health;
+                this.points = 500;
+                this.color = 'rgba(255, 50, 50, 0.9)';
+                this.animFrame = 0;
+                this.shootCooldown = 0;
+                this.moveDirection = 1;
+                this.phase = 'entering';
+                this.bulletSpeed = 3 + (lvl * 0.1);
+            }
+            
+            update() {
+                if (timeFrozen) return;
+                this.animFrame++;
+                
+                if (this.phase === 'entering') {
+                    if (this.y < this.targetY) {
+                        this.y += 2;
+                    } else {
+                        this.phase = 'fighting';
+                    }
+                } else {
+                    this.x += this.speed * this.moveDirection;
+                    if (this.x < 100 || this.x > canvas.width - 100) {
+                        this.moveDirection *= -1;
+                    }
+                    
+                    this.shootCooldown--;
+                    if (this.shootCooldown <= 0) {
+                        this.shoot();
+                        this.shootCooldown = 60;
+                    }
+                }
+            }
+            
+            shoot() {
+                const angles = [-0.5, 0, 0.5];
+                if (level >= 10) angles.push(-0.8, 0.8);
+                angles.forEach(angle => {
+                    const bullet = new BossBullet(this.x, this.y + 40, angle);
+                    bullet.speed = this.bulletSpeed;
+                    enemies.push(bullet);
+                });
+            }
+            
+            draw(ctx) {
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.color;
+                
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                
+                ctx.fillRect(-40, -40, 80, 80);
+                
+                ctx.fillStyle = 'rgba(255, 150, 0, 0.7)';
+                for (let i = 0; i < 4; i++) {
+                    const offset = Math.sin(this.animFrame * 0.1 + i) * 5;
+                    ctx.fillRect(-35 + i * 20, -35, 10, 70);
+                }
+                
+                ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
+                ctx.beginPath();
+                ctx.arc(0, 0, 15, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+                ctx.fillRect(-5, 35, 3, 10);
+                ctx.fillRect(2, 35, 3, 10);
+                
+                ctx.restore();
+                ctx.shadowBlur = 0;
+                
+                const healthBarWidth = 200;
+                const healthPercent = this.health / this.maxHealth;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(canvas.width / 2 - healthBarWidth / 2, 20, healthBarWidth, 10);
+                ctx.fillStyle = 'rgba(255, 50, 50, 0.9)';
+                ctx.fillRect(canvas.width / 2 - healthBarWidth / 2, 20, healthBarWidth * healthPercent, 10);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.strokeRect(canvas.width / 2 - healthBarWidth / 2, 20, healthBarWidth, 10);
+                
+                ctx.fillStyle = 'rgba(255, 50, 50, 0.9)';
+                ctx.font = '16px "Courier New"';
+                ctx.textAlign = 'center';
+                ctx.fillText('BOSS', canvas.width / 2, 15);
+            }
+        }
+
+        // Boss Bullet Class
+        class BossBullet {
+            constructor(x, y, angle) {
+                this.x = x;
+                this.y = y;
+                this.width = 15;
+                this.height = 15;
+                this.speed = 3;
+                this.angle = angle;
+                this.active = true;
+                this.type = 'bossBullet';
+            }
+            
+            update() {
+                if (timeFrozen) return;
+                this.x += Math.sin(this.angle) * this.speed;
+                this.y += this.speed;
+            }
+            
+            draw(ctx) {
+                ctx.fillStyle = 'rgba(255, 100, 0, 0.9)';
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = 'rgba(255, 100, 0, 0.6)';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        // Bullet Class
+        class Bullet {
+            constructor(x, y, vx, vy, color = 'rgba(0, 200, 255, 0.9)') {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.width = 4;
+                this.height = 8;
+                this.color = color;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+            }
+            
+            draw(ctx) {
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 5;
+                ctx.shadowColor = this.color;
+                ctx.fillRect(this.x - 1, this.y, this.width, this.height);
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        // PowerUp Class
+        class PowerUp {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.width = 25;
+                this.height = 25;
+                this.speed = 3;
+                this.rotation = 0;
+                this.pulsePhase = Math.random() * Math.PI * 2;
+                
+                const types = {
+                    invincibility: { color: 'rgba(0, 150, 255, 0.8)', emoji: '🛡️' },
+                    rapidFire: { color: 'rgba(255, 100, 0, 0.8)', emoji: '⚡' },
+                    doppelganger: { color: 'rgba(150, 100, 255, 0.8)', emoji: '👥' },
+                    ammoBoost: { color: 'rgba(255, 200, 0, 0.8)', emoji: '🎯' },
+                    enhancedInvisibility: { color: 'rgba(100, 255, 255, 0.8)', emoji: '👻' },
+                    emp: { color: 'rgba(255, 200, 0, 0.8)', emoji: '💥' },
+                    timeFreeze: { color: 'rgba(150, 200, 255, 0.8)', emoji: '⏰' },
+                    magnet: { color: 'rgba(255, 150, 255, 0.8)', emoji: '🧲' },
+                    shieldBurst: { color: 'rgba(100, 255, 150, 0.8)', emoji: '💚' }
+                };
+                
+                this.color = types[type].color;
+                this.emoji = types[type].emoji;
+            }
+            
+            update() {
+                if (timeFrozen) return;
+                this.y += this.speed;
+                this.rotation += 0.05;
+                this.pulsePhase += 0.15;
+                
+                if (activePowerUps.has('magnet') && player) {
+                    const dx = player.x - this.x;
+                    const dy = player.y - this.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const magnetRange = 150 + (upgrades.magnetRange * 30);
+                    if (dist < magnetRange) {
+                        this.x += (dx / dist) * 2;
+                        this.y += (dy / dist) * 2;
+                    }
+                }
+            }
+            
+            draw(ctx) {
+                const pulse = Math.sin(this.pulsePhase) * 0.3 + 1;
+                
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                ctx.scale(pulse, pulse);
+                
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 3;
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = this.color;
+                ctx.beginPath();
+                ctx.arc(0, 0, 12, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                ctx.shadowBlur = 0;
+                ctx.restore();
+                
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(this.emoji, this.x, this.y);
+            }
+        }
+
+        // Particle Class
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 10;
+                this.vy = (Math.random() - 0.5) * 10;
+                this.life = 40;
+                this.maxLife = 40;
+                this.color = color;
+                this.size = Math.random() * 4 + 2;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vx *= 0.98;
+                this.vy *= 0.98;
+                this.life--;
+                this.size *= 0.98;
+            }
+            
+            draw(ctx) {
+                const alpha = this.life / this.maxLife;
+                ctx.fillStyle = this.color.replace('0.8', alpha * 0.8);
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Initialize
+        function initGame() {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            
+            canvas.width = window.innerWidth - 4;
+            canvas.height = window.innerHeight - 4;
+            
+            // Init stars
+            for (let i = 0; i < 100; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 2 + 0.5,
+                    speed: Math.random() * 0.5 + 0.1,
+                    opacity: Math.random() * 0.5 + 0.2
+                });
+            }
+            
+            setupEvents();
+            loadAchievements();
+            gameLoop();
+            
+            console.log('Game initialized!');
+        }
+
+        function setupEvents() {
+            document.getElementById('startButton').onclick = startGame;
+            document.getElementById('achievementsButton').onclick = showAchievements;
+            document.getElementById('closeAchievementsButton').onclick = hideAchievements;
+            document.getElementById('customizeButton').onclick = showCustomize;
+            document.getElementById('closeCustomizeButton').onclick = hideCustomize;
+            
+            const closeShopBtn = document.getElementById('closeShopButton');
+            if (closeShopBtn) {
+                closeShopBtn.onclick = closeShop;
+            }
+            
+            document.querySelectorAll('.upgrade-button').forEach(btn => {
+                btn.onclick = () => purchaseUpgrade(btn.dataset.upgrade, parseInt(btn.dataset.cost));
+            });
+            
+            document.getElementById('fireButton').onclick = () => {
+                if (gameRunning && !paused) shoot();
+            };
+            
+            document.onkeydown = (e) => {
+                keys[e.code] = true;
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    if (!gameStarted) startGame();
+                    else if (!gameRunning) restartGame();
+                    else if (!paused) shoot();
+                }
+                if (e.code === 'KeyP' && gameStarted) togglePause();
+            };
+            
+            document.onkeyup = (e) => {
+                keys[e.code] = false;
+            };
+            
+            window.onresize = () => {
+                canvas.width = window.innerWidth - 4;
+                canvas.height = window.innerHeight - 4;
+            };
+        }
+
+        function startGame() {
+            console.log('Starting game...');
+            gameStarted = true;
+            gameRunning = true;
+            gameStartTime = Date.now();
+            
+            document.getElementById('startScreen').style.display = 'none';
+            
+            score = 0;
+            level = 1;
+            xp = 0;
+            health = 100;
+            maxHealth = 100;
+            ammo = Infinity;
+            combo = 0;
+            totalKills = 0;
+            survivalTime = 0;
+            powerUpsCollected = 0;
+            boss = null;
+            bossActive = false;
+            
+            player = new Player(canvas.width / 2, canvas.height - 100);
+            doppelganger = null;
+            bullets = [];
+            enemies = [];
+            powerUps = [];
+            particles = [];
+            activePowerUps.clear();
+            
+            applyTheme();
+            loadCustomization();
+            updateUI();
+        }
+
+        function restartGame() {
+            gameRunning = true;
+            gameStartTime = Date.now();
+            document.getElementById('gameOver').style.display = 'none';
+            
+            score = 0;
+            level = 1;
+            xp = 0;
+            health = 100;
+            combo = 0;
+            totalKills = 0;
+            boss = null;
+            bossActive = false;
+            
+            player = new Player(canvas.width / 2, canvas.height - 100);
+            doppelganger = null;
+            bullets = [];
+            enemies = [];
+            powerUps = [];
+            particles = [];
+            activePowerUps.clear();
+            
+            updateUI();
+        }
+
+        function togglePause() {
+            paused = !paused;
+        }
+
+        function shoot() {
+            const now = Date.now();
+            const fireRate = 200 - (upgrades.fireRateBoost * 20);
+            if (now - lastShot < fireRate) return;
+            
+            const rapidFire = activePowerUps.has('rapidFire');
+            const ammoBoost = activePowerUps.has('ammoBoost');
+            const spread = rapidFire ? 3 : (ammoBoost ? 5 : 1);
+            
+            for (let i = 0; i < spread; i++) {
+                const angle = (i - Math.floor(spread / 2)) * 0.3;
+                bullets.push(new Bullet(
+                    player.x,
+                    player.y - 20,
+                    Math.sin(angle) * 10,
+                    -12,
+                    ammoBoost ? 'rgba(255, 200, 0, 0.9)' : 'rgba(0, 200, 255, 0.9)'
+                ));
+                
+                if (doppelganger) {
+                    bullets.push(new Bullet(
+                        doppelganger.x,
+                        doppelganger.y - 20,
+                        Math.sin(angle) * 10,
+                        -12,
+                        'rgba(150, 100, 255, 0.9)'
+                    ));
+                }
+            }
+            
+            lastShot = now;
+        }
+
+        function update() {
+            if (!gameRunning || paused || shopOpen) return;
+            
+            survivalTime = Math.floor((Date.now() - gameStartTime) / 1000);
+            
+            if (timeFrozen && Date.now() > timeFreezeEnd) {
+                timeFrozen = false;
+            }
+            
+            if (Date.now() - lastComboTime > 3000) {
+                combo = 0;
+            }
+            
+            // Move player
+            if (player) {
+                if ((keys['ArrowLeft'] || keys['KeyA']) && player.x > 20) player.x -= player.speed;
+                if ((keys['ArrowRight'] || keys['KeyD']) && player.x < canvas.width - 20) player.x += player.speed;
+                if ((keys['ArrowUp'] || keys['KeyW']) && player.y > 20) player.y -= player.speed;
+                if ((keys['ArrowDown'] || keys['KeyS']) && player.y < canvas.height - 20) player.y += player.speed;
+            }
+            
+            // Update doppelganger
+            if (doppelganger) {
+                doppelganger.x = canvas.width - player.x;
+                doppelganger.y = player.y;
+            }
+            
+            // Update boss
+            if (boss) {
+                boss.update();
+            }
+            
+            // Update stars
+            stars.forEach(star => {
+                star.y += star.speed;
+                if (star.y > canvas.height) {
+                    star.y = 0;
+                    star.x = Math.random() * canvas.width;
+                }
+            });
+            
+            // Update bullets
+            bullets = bullets.filter(b => {
+                b.update();
+                return b.y > -10;
+            });
+            
+            // Update enemies
+            enemies.forEach(e => e.update());
+            enemies = enemies.filter(e => {
+                if (e.type === 'bossBullet') {
+                    return e.y < canvas.height + 50 && e.active;
+                }
+                return e.y < canvas.height + 50 && e.active;
+            });
+            
+            // Update power-ups
+            powerUps = powerUps.filter(p => {
+                p.update();
+                return p.y < canvas.height;
+            });
+            
+            // Update particles
+            particles = particles.filter(p => {
+                p.update();
+                return p.life > 0;
+            });
+            
+            // Spawn
+            spawnEntities();
+            
+            // Collisions
+            checkCollisions();
+            
+            // Power-ups
+            updatePowerUpEffects();
+            
+            // Achievements
+            checkAchievements();
+        }
+
+        function spawnEntities() {
+            const now = Date.now();
+            const spawnRate = Math.max(500, 1500 - (level * 50));
+            
+            if (!bossActive && now - lastEnemySpawn > spawnRate) {
+                const types = ['basic', 'fast', 'heavy'];
+                const type = types[Math.floor(Math.random() * types.length)];
+                const x = Math.random() * (canvas.width - 40) + 20;
+                enemies.push(new Enemy(x, -30, type));
+                lastEnemySpawn = now;
+            }
+            
+            if (now - lastPowerUpSpawn > 10000 && Math.random() < 0.005) {
+                const types = ['invincibility', 'rapidFire', 'doppelganger', 'ammoBoost', 'enhancedInvisibility', 'emp', 'timeFreeze', 'magnet', 'shieldBurst'];
+                const type = types[Math.floor(Math.random() * types.length)];
+                const x = Math.random() * (canvas.width - 40) + 20;
+                powerUps.push(new PowerUp(x, -30, type));
+                lastPowerUpSpawn = now;
+            }
+        }
+        
+        function spawnBoss() {
+            bossActive = true;
+            boss = new Boss(level);
+            enemies = [];
+        }
+
+        function checkCollisions() {
+            // Bullets vs Enemies
+            bullets.forEach((b, bi) => {
+                enemies.forEach((e, ei) => {
+                    if (e.active && e.type !== 'bossBullet' && collision(b, e)) {
+                        bullets.splice(bi, 1);
+                        e.health--;
+                        
+                        if (e.health <= 0) {
+                            e.active = false;
+                            addScore(e.points);
+                            addXP(10);
+                            addKill();
+                            createExplosion(e.x, e.y, e.color);
+                        }
+                    }
+                });
+                
+                if (boss && collision(b, boss)) {
+                    bullets.splice(bi, 1);
+                    const damage = 1 + upgrades.damageBoost;
+                    boss.health -= damage;
+                    createExplosion(b.x, b.y, 'rgba(255, 50, 50, 0.8)');
+                    
+                    if (boss.health <= 0) {
+                        addScore(boss.points);
+                        addXP(50);
+                        createExplosion(boss.x, boss.y, boss.color);
+                        for (let i = 0; i < 30; i++) {
+                            particles.push(new Particle(boss.x, boss.y, boss.color));
+                        }
+                        boss = null;
+                        bossActive = false;
+                    }
+                }
+            });
+            
+            // Player vs Enemies
+            if (player) {
+                enemies.forEach((e, i) => {
+                    if (e.active && collision(player, e)) {
+                        if (e.type === 'bossBullet') {
+                            e.active = false;
+                            if (!activePowerUps.has('invincibility') && !activePowerUps.has('enhancedInvisibility')) {
+                                takeDamage(15);
+                                createExplosion(player.x, player.y, 'rgba(255, 0, 100, 0.8)');
+                            }
+                        } else {
+                            e.active = false;
+                            
+                            if (activePowerUps.has('invincibility')) {
+                                addScore(e.points * 2);
+                                addXP(10);
+                                addKill();
+                                createExplosion(e.x, e.y, 'rgba(0, 150, 255, 0.8)');
+                            } else if (!activePowerUps.has('enhancedInvisibility')) {
+                                takeDamage(20);
+                                createExplosion(player.x, player.y, 'rgba(255, 0, 100, 0.8)');
+                            }
+                        }
+                    }
+                });
+                
+                if (boss && collision(player, boss)) {
+                    if (activePowerUps.has('invincibility')) {
+                        takeDamage(10);
+                    } else if (!activePowerUps.has('enhancedInvisibility')) {
+                        takeDamage(30);
+                    }
+                    createExplosion(player.x, player.y, 'rgba(255, 0, 100, 0.8)');
+                }
+            }
+            
+            // Player vs Power-ups
+            if (player) {
+                powerUps.forEach((p, i) => {
+                    if (collision(player, p)) {
+                        powerUps.splice(i, 1);
+                        activatePowerUp(p.type);
+                        addScore(100);
+                        powerUpsCollected++;
+                        createExplosion(p.x, p.y, p.color);
+                    }
+                });
+            }
+        }
+
+        function collision(obj1, obj2) {
+            return obj1.x < obj2.x + obj2.width &&
+                   obj1.x + obj1.width > obj2.x &&
+                   obj1.y < obj2.y + obj2.height &&
+                   obj1.y + obj1.height > obj2.y;
+        }
+
+        function addKill() {
+            totalKills++;
+            combo++;
+            lastComboTime = Date.now();
+            
+            if (combo > maxCombo) maxCombo = combo;
+            if (combo >= 2) addScore(combo * 5);
+        }
+
+        function activatePowerUp(type) {
+            const duration = 10000;
+            const endTime = Date.now() + duration;
+            
+            switch (type) {
+                case 'invincibility':
+                    activePowerUps.set('invincibility', { endTime });
+                    break;
+                case 'rapidFire':
+                    activePowerUps.set('rapidFire', { endTime });
+                    break;
+                case 'doppelganger':
+                    activePowerUps.set('doppelganger', { endTime });
+                    doppelganger = new Player(canvas.width - player.x, player.y);
+                    break;
+                case 'ammoBoost':
+                    activePowerUps.set('ammoBoost', { endTime });
+                    break;
+                case 'enhancedInvisibility':
+                    activePowerUps.set('enhancedInvisibility', { endTime });
+                    break;
+                case 'timeFreeze':
+                    timeFrozen = true;
+                    timeFreezeEnd = Date.now() + 5000;
+                    break;
+                case 'magnet':
+                    activePowerUps.set('magnet', { endTime });
+                    break;
+                case 'shieldBurst':
+                    const burstRange = 200;
+                    let burstHits = 0;
+                    enemies.forEach((e, i) => {
+                        if (e.active && e.type !== 'bossBullet' && player) {
+                            const dx = e.x - player.x;
+                            const dy = e.y - player.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            if (dist < burstRange) {
+                                e.active = false;
+                                addScore(e.points);
+                                addXP(10);
+                                addKill();
+                                createExplosion(e.x, e.y, 'rgba(100, 255, 150, 0.8)');
+                                burstHits++;
+                            }
+                        }
+                    });
+                    
+                    // Visual burst effect
+                    for (let i = 0; i < 50; i++) {
+                        const angle = (Math.PI * 2 * i) / 50;
+                        const distance = burstRange;
+                        const x = player.x + Math.cos(angle) * distance;
+                        const y = player.y + Math.sin(angle) * distance;
+                        particles.push(new Particle(x, y, 'rgba(100, 255, 150, 0.8)'));
+                    }
+                    
+                    if (boss && player) {
+                        const dx = boss.x - player.x;
+                        const dy = boss.y - player.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < burstRange) {
+                            const damage = Math.floor(boss.maxHealth * 0.15);
+                            boss.health -= damage;
+                            createExplosion(boss.x, boss.y, 'rgba(100, 255, 150, 0.8)');
+                            if (boss.health <= 0) {
+                                addScore(boss.points);
+                                addXP(50);
+                                for (let i = 0; i < 30; i++) {
+                                    particles.push(new Particle(boss.x, boss.y, boss.color));
+                                }
+                                boss = null;
+                                bossActive = false;
+                            }
+                        }
+                    }
+                    break;
+                case 'emp':
+                    enemies.forEach(e => {
+                        if (e.active) {
+                            e.active = false;
+                            addScore(e.points);
+                            addXP(10);
+                            addKill();
+                            createExplosion(e.x, e.y, 'rgba(255, 200, 0, 0.8)');
+                        }
+                    });
+                    if (boss) {
+                        const damage = Math.floor(boss.maxHealth * 0.2);
+                        boss.health -= damage;
+                        createExplosion(boss.x, boss.y, 'rgba(255, 200, 0, 0.8)');
+                        if (boss.health <= 0) {
+                            addScore(boss.points);
+                            addXP(50);
+                            for (let i = 0; i < 30; i++) {
+                                particles.push(new Particle(boss.x, boss.y, boss.color));
+                            }
+                            boss = null;
+                            bossActive = false;
+                        }
+                    }
+                    break;
+            }
+        }
+
+        function updatePowerUpEffects() {
+            const now = Date.now();
+            for (let [type, data] of activePowerUps.entries()) {
+                if (now > data.endTime) {
+                    activePowerUps.delete(type);
+                    if (type === 'doppelganger') doppelganger = null;
+                }
+            }
+            updatePowerUpUI();
+        }
+
+        function updatePowerUpUI() {
+            const container = document.getElementById('powerUpIndicators');
+            container.innerHTML = '';
+            
+            for (let [type, data] of activePowerUps.entries()) {
+                const remaining = Math.max(0, data.endTime - Date.now());
+                const seconds = Math.ceil(remaining / 1000);
+                
+                const icon = document.createElement('div');
+                icon.className = `power-up-icon ${type}`;
+                icon.textContent = seconds;
+                container.appendChild(icon);
+            }
+        }
+
+        function takeDamage(amount) {
+            health -= amount;
+            if (health <= 0) gameOver();
+        }
+
+        function addScore(points) {
+            score += points;
+        }
+
+        function addXP(amount) {
+            xp += amount;
+            if (xp >= xpToNext) {
+                level++;
+                xp = 0;
+                xpToNext = Math.floor(xpToNext * 1.5);
+                maxHealth += 20 + (upgrades.healthBoost * 10);
+                health = maxHealth;
+                
+                if (level % 3 === 0) {
+                    openShop();
+                } else {
+                    document.getElementById('levelUp').style.display = 'block';
+                    setTimeout(() => {
+                        document.getElementById('levelUp').style.display = 'none';
+                    }, 2000);
+                }
+                
+                if (level % 5 === 0 && !bossActive) {
+                    spawnBoss();
+                }
+                
+                player.speed = 5 + upgrades.speedBoost;
+            }
+        }
+
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 10; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        function showAchievements() {
+            document.getElementById('achievementsPanel').style.display = 'flex';
+            const list = document.getElementById('achievementsList');
+            list.innerHTML = '';
+            
+            achievements.forEach(achievement => {
+                const item = document.createElement('div');
+                item.className = `achievement-item ${achievement.unlocked ? 'unlocked' : ''}`;
+                item.innerHTML = `
+                    <h3>${achievement.unlocked ? '✅' : '🔒'} ${achievement.name}</h3>
+                    <p>${achievement.description}</p>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function hideAchievements() {
+            document.getElementById('achievementsPanel').style.display = 'none';
+        }
+        
+        function openShop() {
+            shopOpen = true;
+            paused = true;
+            const shopPanel = document.getElementById('shopPanel');
+            if (shopPanel) {
+                shopPanel.style.display = 'flex';
+                const shopScore = document.getElementById('shopScore');
+                if (shopScore) shopScore.textContent = score;
+                updateShopUI();
+            }
+        }
+        
+        function closeShop() {
+            shopOpen = false;
+            paused = false;
+            document.getElementById('shopPanel').style.display = 'none';
+            
+            if (!bossActive) {
+                document.getElementById('levelUp').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('levelUp').style.display = 'none';
+                }, 2000);
+            }
+        }
+        
+        function updateShopUI() {
+            const shopScore = document.getElementById('shopScore');
+            if (shopScore) shopScore.textContent = score;
+            
+            document.querySelectorAll('.upgrade-button').forEach(btn => {
+                const cost = parseInt(btn.dataset.cost);
+                const upgradeType = btn.dataset.upgrade;
+                const currentLevel = upgrades[upgradeType];
+                const levelSpan = btn.parentElement.querySelector('.upgrade-level');
+                if (levelSpan) levelSpan.textContent = `Lv ${currentLevel}`;
+                btn.textContent = `Buy for ${cost} points`;
+                btn.disabled = score < cost;
+            });
+        }
+        
+        function purchaseUpgrade(type, cost) {
+            if (score >= cost) {
+                score -= cost;
+                upgrades[type]++;
+                
+                const shopScore = document.getElementById('shopScore');
+                if (shopScore) shopScore.textContent = score;
+                
+                const newCost = Math.floor(cost * 1.5);
+                const button = document.querySelector(`[data-upgrade="${type}"]`);
+                if (button) {
+                    button.dataset.cost = newCost;
+                }
+                
+                updateShopUI();
+                updateUI();
+            }
+        }
+
+        function loadAchievements() {
+            const saved = localStorage.getItem('rainmanAchievements');
+            if (saved) {
+                const savedIds = JSON.parse(saved);
+                achievements.forEach(a => {
+                    if (savedIds.includes(a.id)) a.unlocked = true;
+                });
+            }
+        }
+
+        function checkAchievements() {
+            achievements.forEach(a => {
+                if (a.unlocked) return;
+                
+                let unlock = false;
+                switch (a.id) {
+                    case 'firstKill': unlock = totalKills >= 1; break;
+                    case 'killStreak10': unlock = totalKills >= 10; break;
+                    case 'killStreak50': unlock = totalKills >= 50; break;
+                    case 'survive30': unlock = survivalTime >= 30; break;
+                    case 'score1000': unlock = score >= 1000; break;
+                    case 'level5': unlock = level >= 5; break;
+                    case 'level10': unlock = level >= 10; break;
+                    case 'combo5': unlock = maxCombo >= 5; break;
+                    case 'powerUpCollector': unlock = powerUpsCollected >= 5; break;
+                }
+                
+                if (unlock) {
+                    a.unlocked = true;
+                    const saved = JSON.parse(localStorage.getItem('rainmanAchievements') || '[]');
+                    saved.push(a.id);
+                    localStorage.setItem('rainmanAchievements', JSON.stringify(saved));
+                    
+                    // Check for skin/theme unlocks
+                    checkCustomizationUnlocks(a.id);
+                    
+                    const notification = document.getElementById('achievementNotification');
+                    notification.querySelector('.achievement-notification-title').textContent = '🏆 Achievement!';
+                    notification.querySelector('.achievement-notification-description').textContent = a.name;
+                    notification.classList.add('show');
+                    setTimeout(() => notification.classList.remove('show'), 3000);
+                }
+            });
+        }
+        
+        function checkCustomizationUnlocks(achievementId) {
+            Object.keys(skins).forEach(skinKey => {
+                if (skins[skinKey].unlock === achievementId && !unlockedSkins.includes(skinKey)) {
+                    unlockedSkins.push(skinKey);
+                    saveCustomization();
+                    showUnlockNotification(`🎨 New Skin: ${skins[skinKey].name}`);
+                }
+            });
+            
+            Object.keys(themes).forEach(themeKey => {
+                if (themes[themeKey].unlock === achievementId && !unlockedThemes.includes(themeKey)) {
+                    unlockedThemes.push(themeKey);
+                    saveCustomization();
+                    showUnlockNotification(`🌟 New Theme: ${themes[themeKey].name}`);
+                }
+            });
+        }
+        
+        function showUnlockNotification(text) {
+            const notification = document.getElementById('achievementNotification');
+            notification.querySelector('.achievement-notification-title').textContent = '🎉 Unlocked!';
+            notification.querySelector('.achievement-notification-description').textContent = text;
+            notification.classList.add('show');
+            setTimeout(() => notification.classList.remove('show'), 3000);
+        }
+        
+        function showCustomize() {
+            document.getElementById('customizePanel').style.display = 'flex';
+            renderCustomizeOptions();
+        }
+        
+        function hideCustomize() {
+            document.getElementById('customizePanel').style.display = 'none';
+        }
+        
+        function renderCustomizeOptions() {
+            const skinsList = document.getElementById('skinsList');
+            const themesList = document.getElementById('themesList');
+            
+            skinsList.innerHTML = '';
+            Object.keys(skins).forEach(skinKey => {
+                const skin = skins[skinKey];
+                const unlocked = unlockedSkins.includes(skinKey);
+                const selected = currentSkin === skinKey;
+                
+                const card = document.createElement('div');
+                card.className = `customize-card ${unlocked ? 'unlocked' : 'locked'} ${selected ? 'selected' : ''}`;
+                card.innerHTML = `
+                    <div class="skin-preview" style="background: ${skin.color}; box-shadow: 0 0 15px ${skin.glow}"></div>
+                    <h3>${unlocked ? '' : '🔒 '}${skin.name}</h3>
+                    ${!unlocked && skin.unlock ? `<p class="unlock-hint">Unlock: ${achievements.find(a => a.id === skin.unlock)?.name}</p>` : ''}
+                `;
+                if (unlocked) {
+                    card.onclick = () => selectSkin(skinKey);
+                }
+                skinsList.appendChild(card);
+            });
+            
+            themesList.innerHTML = '';
+            Object.keys(themes).forEach(themeKey => {
+                const theme = themes[themeKey];
+                const unlocked = unlockedThemes.includes(themeKey);
+                const selected = currentTheme === themeKey;
+                
+                const card = document.createElement('div');
+                card.className = `customize-card ${unlocked ? 'unlocked' : 'locked'} ${selected ? 'selected' : ''}`;
+                card.innerHTML = `
+                    <div class="theme-preview" style="background: ${theme.bgGradient}"></div>
+                    <h3>${unlocked ? '' : '🔒 '}${theme.name}</h3>
+                    ${!unlocked && theme.unlock ? `<p class="unlock-hint">Unlock: ${achievements.find(a => a.id === theme.unlock)?.name}</p>` : ''}
+                `;
+                if (unlocked) {
+                    card.onclick = () => selectTheme(themeKey);
+                }
+                themesList.appendChild(card);
+            });
+        }
+        
+        function selectSkin(skinKey) {
+            currentSkin = skinKey;
+            saveCustomization();
+            renderCustomizeOptions();
+        }
+        
+        function selectTheme(themeKey) {
+            currentTheme = themeKey;
+            applyTheme();
+            saveCustomization();
+            renderCustomizeOptions();
+        }
+        
+        function applyTheme() {
+            const theme = themes[currentTheme];
+            const canvasEl = document.getElementById('gameCanvas');
+            if (canvasEl) {
+                canvasEl.style.background = theme.bgGradient;
+            }
+        }
+        
+        function saveCustomization() {
+            localStorage.setItem('rainmanCustomization', JSON.stringify({
+                currentSkin,
+                currentTheme,
+                unlockedSkins,
+                unlockedThemes
+            }));
+        }
+        
+        function loadCustomization() {
+            const saved = localStorage.getItem('rainmanCustomization');
+            if (saved) {
+                const data = JSON.parse(saved);
+                currentSkin = data.currentSkin || 'default';
+                currentTheme = data.currentTheme || 'space';
+                unlockedSkins = data.unlockedSkins || ['default'];
+                unlockedThemes = data.unlockedThemes || ['space'];
+                applyTheme();
+            }
+        }
+
+        function updateUI() {
+            const scoreEl = document.getElementById('score');
+            const levelEl = document.getElementById('level');
+            const xpEl = document.getElementById('xp');
+            const xpNextEl = document.getElementById('xpNext');
+            const comboEl = document.getElementById('comboValue');
+            const ammoEl = document.getElementById('ammo');
+            const healthFillEl = document.getElementById('healthFill');
+            
+            if (scoreEl) scoreEl.textContent = score;
+            if (levelEl) levelEl.textContent = level;
+            if (xpEl) xpEl.textContent = xp;
+            if (xpNextEl) xpNextEl.textContent = xpToNext;
+            if (comboEl) comboEl.textContent = combo;
+            if (ammoEl) ammoEl.textContent = ammo === Infinity ? '∞' : ammo;
+            
+            if (healthFillEl) {
+                const healthPercent = (health / maxHealth) * 100;
+                healthFillEl.style.width = healthPercent + '%';
+            }
+        }
+
+        function render() {
+            ctx.fillStyle = 'rgba(0, 0, 10, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Stars
+            const theme = themes[currentTheme];
+            stars.forEach(star => {
+                ctx.fillStyle = `${theme.starColor}, ${star.opacity})`;
+                ctx.fillRect(star.x, star.y, star.size, star.size);
+            });
+            
+            if (!gameStarted) return;
+            
+            if (boss) boss.draw(ctx);
+            if (player) player.draw(ctx, activePowerUps.has('invincibility'));
+            if (doppelganger) doppelganger.draw(ctx, false);
+            bullets.forEach(b => b.draw(ctx));
+            enemies.forEach(e => { if (e.active) e.draw(ctx); });
+            powerUps.forEach(p => p.draw(ctx));
+            particles.forEach(p => p.draw(ctx));
+        }
+
+        function gameLoop() {
+            update();
+            render();
+            if (gameStarted) updateUI();
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onload = initGame;
+    </script>
+</body>
+</html>
